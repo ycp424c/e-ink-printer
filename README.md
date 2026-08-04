@@ -6,6 +6,13 @@ Bluetooth Low Energy（BLE）刷新到兼容 epdiy.cn GR5513 协议的电子墨�
 项目面向 macOS 本地运行：凭据保留在用户机器上，账户查询、图片渲染和设备上传
 均由本地 Python 进程完成。单个服务不可用时，其余卡片仍会继续更新。
 
+## 模拟渲染效果
+
+运行 `refresh.py --dry-run` 即可在电脑上得到下图所示的 400 × 300 黑白红看板，
+无需连接任何蓝牙设备：
+
+![模拟渲染效果](docs/screenshot.png)
+
 ## 功能特性
 
 - 并发查询 Codex、Kimi、DeepSeek，预留 TokenHub 接入位。
