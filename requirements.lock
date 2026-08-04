@@ -1,0 +1,10 @@
+# Reproducible macOS environment tested on Python 3.10+.
+# Regenerate from an isolated environment after updating requirements.txt.
+async-timeout==5.0.1
+bleak==3.0.2
+pillow==12.3.0
+pyobjc-core==12.2.1
+pyobjc-framework-Cocoa==12.2.1
+pyobjc-framework-CoreBluetooth==12.2.1
+pyobjc-framework-libdispatch==12.2.1
+typing_extensions==4.16.0
