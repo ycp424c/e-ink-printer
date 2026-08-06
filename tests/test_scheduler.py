@@ -49,6 +49,29 @@ class SchedulerInstallerTests(unittest.TestCase):
         self.assertEqual(plist["StandardOutPath"], str(ROOT / "logs" / "launchd.log"))
         self.assertNotIn("/Users/", PLIST_TEMPLATE.read_text())
 
+    def test_calendar_interval_is_workday_window_only(self) -> None:
+        """StartCalendarInterval 必须精确等于工作日 9:00–19:00 每半小时的组合。"""
+        with PLIST_TEMPLATE.open("rb") as handle:
+            plist = plistlib.load(handle)
+
+        intervals = plist["StartCalendarInterval"]
+        self.assertTrue(intervals, "StartCalendarInterval 不应为空")
+        for entry in intervals:
+            self.assertEqual(
+                set(entry),
+                {"Weekday", "Hour", "Minute"},
+                f"每个调度条目只应含 Weekday/Hour/Minute: {entry}",
+            )
+
+        actual = {(e["Weekday"], e["Hour"], e["Minute"]) for e in intervals}
+        expected = {
+            (wd, hour, minute)
+            for wd in (1, 2, 3, 4, 5)  # 周一至周五（0/7 为周日）
+            for hour in range(9, 20)  # 9:00–19:00，含 19:00
+            for minute in (0, 30)
+        }
+        self.assertEqual(actual, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

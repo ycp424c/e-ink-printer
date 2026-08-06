@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 安装 launchd LaunchAgent：每 30 分钟刷新墨水屏余额。
+# 安装 launchd LaunchAgent：工作日（周一至周五）9:00–19:00 每半小时整点
+# （:00 与 :30）刷新墨水屏余额，其余日期/时段不刷新。
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

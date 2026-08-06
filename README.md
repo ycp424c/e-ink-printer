@@ -168,7 +168,9 @@ export CC_SWITCH_DB=/absolute/path/to/cc-switch.db
 
 ## 定时刷新
 
-仓库提供一个每 30 分钟执行一次、加载后立即运行的 macOS LaunchAgent。
+仓库提供一个 macOS LaunchAgent：工作日（周一至周五）9:00–19:00 每半小时整点
+（:00 与 :30）执行一次，时钟对齐而非固定间隔；其余日期/时段不刷新。加载
+（安装或登录）时仍会立即运行一次，便于验证。
 
 [`scheduler/com.eink.printer.refresh.plist`](scheduler/com.eink.printer.refresh.plist)
 是无用户路径的模板。安装脚本会根据当前 checkout 自动生成
