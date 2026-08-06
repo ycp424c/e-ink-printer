@@ -6,6 +6,9 @@
 - cc-switch SQLite DB（`~/.cc-switch/cc-switch.db`）里的 provider `settings_config.env.ANTHROPIC_AUTH_TOKEN`
 - `~/.codex/auth.json`（只读取 Codex access token 和 account ID，由 Codex 自身维护）
 
+TokenHub 的腾讯云 API 密钥（SecretId/SecretKey）只从进程环境变量或 `.env`
+读取，不做本机文件自动发现。
+
 绝不把凭据写进日志、预览图或 git。
 """
 
@@ -79,6 +82,15 @@ def kimi_api_key() -> str | None:
     return _cc_switch_key(PROVIDER_NAME_KIMI)
 
 
+def tokenhub_credentials() -> dict:
+    """返回 TokenHub 查询所需的腾讯云 API 密钥；缺失项为空字符串。"""
+    return {
+        "secret_id": _explicit_value("TENCENTCLOUD_SECRET_ID") or "",
+        "secret_key": _explicit_value("TENCENTCLOUD_SECRET_KEY") or "",
+        "team_id": _explicit_value("TOKENHUB_TEAM_ID") or "",
+    }
+
+
 def codex_tokens() -> dict:
     """只返回余额查询所需的 access token 和 account ID。"""
     if not CODEX_AUTH_JSON.exists():
@@ -114,6 +126,12 @@ def resolve_secrets_keys() -> list[str]:
         keys.append("CODEX_ACCESS_TOKEN")
     if tokens.get("account_id"):
         keys.append("CODEX_ACCOUNT_ID")
+    tokenhub = tokenhub_credentials()
+    if tokenhub.get("secret_id") and tokenhub.get("secret_key"):
+        keys.append("TENCENTCLOUD_SECRET_ID")
+        keys.append("TENCENTCLOUD_SECRET_KEY")
+    if tokenhub.get("team_id"):
+        keys.append("TOKENHUB_TEAM_ID")
     return keys
 
 

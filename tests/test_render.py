@@ -57,7 +57,7 @@ def _sample_balances(*, alert: bool = False) -> list[AccountBalance]:
         ),
         AccountBalance(
             name="DEEPSEEK",
-            headline="CNY 58.81",
+            headline="¥58.81",
             plan="API 余额",
             sub="充值 ¥58.81 · 赠金 ¥0.00",
         ),

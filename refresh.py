@@ -5,18 +5,24 @@
     .venv/bin/python refresh.py              # 完整流程（查余额 + 渲染 + 上传）
     .venv/bin/python refresh.py --dry-run    # 只查余额 + 渲染，不连蓝牙
 
-launchd 每 30 分钟调用一次（见 scheduler/）。
+launchd 每半小时整点调用一次（见 scheduler/）。通过 logs/refresh.lock 文件锁
+防止调度触发与手动运行并发上传：同一台设备同时被两个进程写入会互相干扰，
+可能导致屏幕花屏。
+
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import logging
+import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import BinaryIO
 
 from balances import AccountBalance, fetch_all
 from render import DEFAULT_TITLE, render_image
@@ -24,6 +30,21 @@ from render import DEFAULT_TITLE, render_image
 ROOT = Path(__file__).resolve().parent
 VENDOR_DISPLAY = ROOT / "vendor" / "epdiy_display.py"
 LOG_DIR = ROOT / "logs"
+LOCK_FILE = LOG_DIR / "refresh.lock"
+
+
+def acquire_lock(lock_path: Path) -> BinaryIO | None:
+    """非阻塞获取刷新互斥锁；已被其他进程持有则返回 None。"""
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(lock_path, "w")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    handle.write(str(os.getpid()))
+    handle.flush()
+    return handle
 
 
 def setup_logging() -> logging.Logger:
@@ -144,6 +165,11 @@ def main() -> int:
     args = parser.parse_args()
 
     logger = setup_logging()
+    lock = acquire_lock(LOCK_FILE)
+    if lock is None:
+        logger.warning("已有刷新进程在运行（%s 被占用），本次跳过", LOCK_FILE)
+        return 0
+
     logger.info("===== 开始刷新 =====")
 
     balances = fetch_all()

@@ -27,13 +27,19 @@ def _get_balance(key: str) -> dict:
         return json.loads(resp.read())
 
 
+_SYMBOLS = {"CNY": "¥", "USD": "$"}
+
+
 def _parse(infos: list[dict]) -> tuple[str, str]:
-    """按 currency 返回 (display_text, cny_total)；优先 CNY，其次 USD。"""
+    """按 currency 返回 (display_text, cny_total)；优先 CNY，其次 USD。
+
+    显示统一为符号前缀（¥/$），与 TokenHub 余额卡片风格一致。
+    """
     by_currency = {info.get("currency"): info for info in infos}
     for currency in ("CNY", "USD"):
         if currency in by_currency:
             total = by_currency[currency].get("total_balance") or "0.00"
-            return f"{currency} {total}", total
+            return f"{_SYMBOLS.get(currency, currency + ' ')}{total}", total
     return "—", "0.00"
 
 

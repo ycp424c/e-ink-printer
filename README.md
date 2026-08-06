@@ -15,7 +15,7 @@ Bluetooth Low Energy（BLE）刷新到兼容 epdiy.cn GR5513 协议的电子墨�
 
 ## 功能特性
 
-- 并发查询 Codex、Kimi、DeepSeek，预留 TokenHub 接入位。
+- 并发查询 Codex、Kimi、DeepSeek、TokenHub。
 - 同时展示套餐总额度、滚动时间窗、API 余额和重置时间。
 - 根据内容复杂度自动分配卡片高度，最多展示四个账户。
 - 针对 1-bit 墨水屏优化中文小字、硬边进度条和黑白红视觉层级。
@@ -31,7 +31,7 @@ Bluetooth Low Energy（BLE）刷新到兼容 epdiy.cn GR5513 协议的电子墨�
 | Codex | 套餐、用量窗口、重置时间、credits | `~/.codex/auth.json` | 用量 > 80%，或 credits < ¥10 | 已接入 |
 | Kimi Coding Plan | 套餐用量、5 小时窗口、重置时间 | `~/.cc-switch/cc-switch.db` | 剩余额度 < 20，或用量 > 80% | 已接入 |
 | DeepSeek | CNY / USD API 余额及余额构成 | `~/.cc-switch/cc-switch.db` | CNY 余额 < ¥10 | 已接入 |
-| Tencent TokenHub | 占位卡片 | 暂无 | — | 待接入 |
+| Tencent TokenHub | 套餐主包余量；无套餐时自动显示账户余额 | `.env` 的 `TENCENTCLOUD_SECRET_ID` / `TENCENTCLOUD_SECRET_KEY` | 用量 > 80%，或余额 < ¥10 | 已接入 |
 
 Codex 和 Kimi 使用的用量接口、cc-switch 数据库结构均可能随上游变化；相关异常会
 显示为错误卡片，不会阻止其他账户渲染。
@@ -116,6 +116,9 @@ DEEPSEEK_API_KEY=sk-xxxx
 KIMI_API_KEY=sk-kimi-xxxx
 CODEX_ACCESS_TOKEN=your-short-lived-access-token
 CODEX_ACCOUNT_ID=your-account-id
+TENCENTCLOUD_SECRET_ID=AKIDxxxxxxxx
+TENCENTCLOUD_SECRET_KEY=your-secret-key
+TOKENHUB_TEAM_ID=tp-ent-xxxxxxxx   # 可选：指定 Token Plan 套餐
 ```
 
 Codex 凭据文件和 cc-switch 数据库的非默认路径需要通过进程环境变量指定：
@@ -234,9 +237,12 @@ git diff --check
 3. 为正常、告警、错误和超长文本状态补充测试。
 4. 用 `--dry-run` 检查最终图片；当前画布最多展示前四个 provider。
 
-TokenHub 网关目前没有已确认可用的余额 REST 接口。后续可以基于腾讯云 API 3.0
-的 `DescribeTokenPlan` 接入，但需要由用户提供 SecretId、SecretKey 和 TeamId，并
-实现 TC3 签名。
+TokenHub 通过腾讯云 API 3.0 查询，需要腾讯云 API 密钥（SecretId/SecretKey，
+在[云 API 密钥](https://console.cloud.tencent.com/capi)页面创建）并实现 TC3 签名：
+- 账号下有 Token Plan 套餐时，用 `DescribeTokenPlan` / `DescribeTokenPlanList`
+  显示套餐主包余量；未指定 `TOKENHUB_TEAM_ID` 时自动选择第一个启用中的套餐。
+- 没有套餐（按量计费）时自动回退到 `DescribeAccountBalance` 显示腾讯云账户余额。
+TokenHub 的凭据只从进程环境变量或 `.env` 读取，不做本机文件自动发现。
 
 ## 故障排查
 
@@ -248,6 +254,9 @@ TokenHub 网关目前没有已确认可用的余额 REST 接口。后续可以�
   设备型号、分辨率与协议是否匹配。
 - **上传进程成功但屏幕未更新**：命令成功只表示协议交互完成，仍需核对目标设备、
   槽位以及实屏结果。设备检查与恢复流程见 `vendor/README.md`。
+- **屏幕花屏/乱码**：通常是两个刷新进程同时连接设备互相干扰（例如定时任务与
+  手动运行撞车）。`refresh.py` 已通过 `logs/refresh.lock` 文件锁防止并发上传；
+  若已花屏，等面板刷新结束后重新执行一次 `refresh.py` 即可恢复。
 
 ## 贡献
 
