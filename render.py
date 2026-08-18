@@ -222,12 +222,19 @@ def _draw_usage_card(
         second = windows[1]
         second_label = _window_label(second.label) or "次级窗口"
         second_pct = f"{int(max(0.0, min(100.0, second.pct)))}%"
-        second_pct_w = draw.textlength(second_pct, font=label_font)
         second_alert = balance.alert or second.pct >= _ALERT_PCT
+        label_w = draw.textlength(second_label, font=label_font)
         draw.text((x0 + pad, y0 + 98), second_label, font=label_font, fill=FG)
+        # 右侧优先展示"用量% · 重置时间"（如 "6% · 重置 08-11 09:25"），
+        # 无重置时间时退化为纯百分比；超宽时截断，避免与左侧标签重叠。
+        right_text = second_pct
+        if second.sub:
+            right_text = f"{second_pct} · {second.sub}"
+        right_text = _ellipsize_text(draw, right_text, label_font, x1 - pad - label_w - 6)
+        right_w = draw.textlength(right_text, font=label_font)
         draw.text(
-            (x1 - pad - second_pct_w, y0 + 98),
-            second_pct,
+            (x1 - pad - right_w, y0 + 98),
+            right_text,
             font=label_font,
             fill=RED if second_alert else FG,
         )

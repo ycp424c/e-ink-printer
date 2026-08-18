@@ -76,7 +76,14 @@ def fetch() -> AccountBalance:
             fh_remaining = float(detail.get("remaining") or 0)
             fh_used = max(0.0, fh_limit - fh_remaining)
             fh_pct = (fh_used / fh_limit * 100.0) if fh_limit > 0 else 0.0
-            window_usages.append(WindowUsage(label="5h窗", pct=fh_pct))
+            fh_reset = _fmt_reset(detail.get("resetTime", ""))
+            window_usages.append(
+                WindowUsage(
+                    label="5h窗",
+                    pct=fh_pct,
+                    sub=f"重置 {fh_reset}" if fh_reset else "",
+                )
+            )
             break
 
     usage_pct = (used / limit * 100.0) if limit > 0 else None
