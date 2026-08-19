@@ -6,19 +6,32 @@
 
 本模块只读使用 access_token；登录过期时提示用户通过 Codex 自身重新登录，绝不刷新或
 改写 ~/.codex/auth.json。
+
+查询对可恢复的瞬时故障做有限重试：wham/usage 是私有接口，实测偶发抖动（约 2% 失败率，
+5xx/429/网络异常，其他 provider 同时段均正常），重试基本能恢复；401/403 表示登录失效，
+重试无意义，直接提示用户重新登录。
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import time
+import urllib.error
 import urllib.request
 
 import config
 
 from .base import AccountBalance, WindowUsage, error_balance
 
+logger = logging.getLogger("eink.balances.codex")
+
 USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+
+# 可重试的瞬时故障状态码；401/403（登录失效）及其他 4xx 不重试
+RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 3        # 首次请求 + 最多 2 次重试
+BACKOFF_SECONDS = 2.0   # 指数退避基数：2s、4s
 
 PLAN_LABELS = {
     "pro": "Pro",
@@ -38,13 +51,35 @@ def _request(url: str, *, token: str, account_id: str | None, timeout: int = 15)
     if account_id:
         headers["ChatGPT-Account-Id"] = account_id
     req = urllib.request.Request(url, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, json.loads(resp.read())
-    except urllib.error.HTTPError as exc:
-        return exc.code, None
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError(f"网络错误: {exc}") from exc
+    last_error = "未知错误"
+    last_status: int | None = None
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            if exc.code not in RETRYABLE_STATUSES:
+                return exc.code, None
+            last_status = exc.code
+            last_error = f"HTTP {exc.code}"
+        except json.JSONDecodeError as exc:
+            last_error = f"响应解析失败: {exc}"
+        except Exception as exc:  # noqa: BLE001
+            last_error = f"网络错误: {exc}"
+        if attempt == MAX_ATTEMPTS - 1:
+            break
+        delay = BACKOFF_SECONDS * (2**attempt)
+        logger.warning(
+            "codex 查询失败（%s），%.0fs 后重试（第 %d/%d 次）",
+            last_error,
+            delay,
+            attempt + 1,
+            MAX_ATTEMPTS - 1,
+        )
+        time.sleep(delay)
+    if last_status is not None:
+        return last_status, None
+    raise RuntimeError(last_error)
 
 
 def fetch() -> AccountBalance:
