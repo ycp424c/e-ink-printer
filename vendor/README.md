@@ -13,6 +13,14 @@
   维护的 Python 主机端实现。
 - 本项目与 epdiy.cn、设备厂商及 EPD-nRF5 维护者没有隶属或背书关系。
 
+`fonts/` 子目录中的字体文件不随项目按 GPL-3.0 发布，各自按上游许可分发：
+
+- Noto Sans SC（Regular/Medium/Bold/Light，来自
+  [notofonts/noto-cjk](https://github.com/notofonts/noto-cjk) 官方 SubsetOTF）按
+  [SIL Open Font License 1.1](fonts/OFL-NotoSansSC.txt)；
+- DejaVu Sans（[dejavu-fonts](https://github.com/dejavu-fonts/dejavu-fonts) 2.37）
+  按 [组合许可](fonts/LICENSE-DejaVu.txt)（Bitstream Vera + 公有领域 + OFL）分发。
+
 如果后续从其他上游复制或改写代码，必须在本节补充来源、提交版本和许可证，不能只
 依赖根目录许可证覆盖来源不明的实现。
 

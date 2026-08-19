@@ -51,13 +51,14 @@ Codex 和 Kimi 使用的用量接口、cc-switch 数据库结构均可能随上�
 
 ## 运行要求
 
-- macOS（当前渲染器依赖系统内置的 PingFang 和 Helvetica 字体）。
+- macOS（BLE 上传和 `launchd` 定时调度目前仅支持 macOS；图片渲染已内置
+  Noto Sans SC 与 DejaVu Sans 字体，不再依赖系统字体）。
 - Python 3.10 或更高版本。
 - 支持 BLE 的 Mac，并授予运行 Python 的终端蓝牙权限。
 - epdiy.cn GR5513 扩展协议兼容设备，默认蓝牙名称前缀为 `NRF_EPD_`。
 - 可访问各账户 API 的网络环境。
 
-其他操作系统可以运行账户查询层，但字体路径、BLE 权限和定时调度尚未做跨平台
+其他操作系统可以运行账户查询和图片渲染层，但 BLE 权限和定时调度尚未做跨平台
 适配。
 
 ## 快速开始
@@ -273,5 +274,7 @@ Request 时请说明复现方式、硬件/系统环境和验证结果，并确�
 ## 许可证
 
 本项目按 [GPL-3.0-only](LICENSE) 发布。`vendor/` 中 GR5513
-兼容实现的来源、上游版本和授权说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+兼容实现的来源、上游版本和授权说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)；
+`vendor/fonts/` 内嵌的 Noto Sans SC（SIL OFL 1.1）与 DejaVu Sans（Bitstream/公有领域/OFL）
+字体按各自上游许可分发，详见 [vendor/README.md](vendor/README.md) 的字体段落。
 与 [vendor/README.md](vendor/README.md)。

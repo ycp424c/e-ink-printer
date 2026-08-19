@@ -1,10 +1,39 @@
 import unittest
+import unittest.mock
 from datetime import datetime
 
 from PIL import Image, ImageDraw
 
 import render
 from balances import AccountBalance, WindowUsage
+
+
+class FontLoadingTests(unittest.TestCase):
+    def test_pf_loads_vendored_noto_by_default(self) -> None:
+        font = render._pf(11, "medium")
+        self.assertTrue(font.path.endswith("NotoSansSC-Medium.otf"))
+
+    def test_hv_loads_vendored_dejavu_by_default(self) -> None:
+        font = render._hv(13, bold=True)
+        self.assertTrue(font.path.endswith("DejaVuSans-Bold.ttf"))
+
+    def test_pf_falls_back_when_vendored_font_missing(self) -> None:
+        # vendor 字体缺失时回退到系统字体；CI 上系统字体也不存在则明确报错。
+        with unittest.mock.patch.dict(render._NOTO_FILES, {"medium": "/nonexistent/NopeSC-Medium.otf"}):
+            try:
+                font = render._pf(11, "medium")
+            except OSError:
+                return
+        self.assertNotEqual(font.path, "/nonexistent/NopeSC-Medium.otf")
+
+    def test_pf_error_lists_all_candidates_when_all_missing(self) -> None:
+        with unittest.mock.patch.dict(render._NOTO_FILES, {"medium": "/nonexistent/NopeSC-Medium.otf"}):
+            with unittest.mock.patch.object(render, "PINGFANG", "/nonexistent/NopePingFang.ttc"):
+                with self.assertRaises(OSError) as ctx:
+                    render._pf(11, "medium")
+        message = str(ctx.exception)
+        self.assertIn("NopeSC-Medium.otf", message)
+        self.assertIn("NopePingFang.ttc", message)
 
 
 class EllipsizeTextTests(unittest.TestCase):

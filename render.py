@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from datetime import datetime
 
 from PIL import Image, ImageDraw, ImageFont
@@ -28,6 +29,25 @@ GAP = 8
 GRID_TOP = 47
 GRID_BOTTOM = HEIGHT - MARGIN
 
+# 字体策略：优先加载仓库内 vendored 字体（CI 与设备环境一致，不依赖系统字体），
+# 缺失时回退到 macOS 系统字体路径（本机开发可用）。
+_FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor", "fonts")
+
+# Noto Sans SC（SIL OFL 1.1，许可见 vendor/fonts/OFL-NotoSansSC.txt）：
+# 与 PingFang 字重对应，其中 Semibold 用 Bold 字重替代；
+# "light" 当前无调用点，保留以备将来使用。
+_NOTO_FILES = {
+    "regular": os.path.join(_FONT_DIR, "NotoSansSC-Regular.otf"),
+    "medium": os.path.join(_FONT_DIR, "NotoSansSC-Medium.otf"),
+    "semibold": os.path.join(_FONT_DIR, "NotoSansSC-Bold.otf"),
+    "light": os.path.join(_FONT_DIR, "NotoSansSC-Light.otf"),
+}
+_DEJAVU_FILES = {
+    False: os.path.join(_FONT_DIR, "DejaVuSans.ttf"),
+    True: os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf"),
+}
+
+# 回退用的 macOS 系统字体（GitHub Actions runner 上不一定存在）。
 PINGFANG = "/System/Library/Fonts/PingFang.ttc"
 HELVETICA = "/System/Library/Fonts/Helvetica.ttc"
 # PingFang.ttc index：2 Regular / 5 Medium / 8 Semibold / 11 Light
@@ -37,17 +57,36 @@ _ALERT_PCT = 80.0  # 用量超过该值红色高亮
 _WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 
+def _load_truetype(candidates: list[tuple[str, int]], size: int) -> ImageFont.FreeTypeFont:
+    """依次尝试 (路径, ttc index) 候选，返回第一个能加载的字体。
+
+    注意：Pillow 在目标路径打不开时还会按文件名在系统字体目录兜底搜索，
+    因此显式回退只在候选文件名均不存在时才真正生效。
+    """
+    errors: list[OSError] = []
+    for path, index in candidates:
+        try:
+            return ImageFont.truetype(path, size, index=index)
+        except OSError as error:
+            errors.append(error)
+    raise OSError(
+        f"无法加载任何候选字体（{len(candidates)} 个候选全部失败）："
+        f"{[path for path, _ in candidates]}；最后错误：{errors[-1]}"
+    ) from errors[-1]
+
+
 def _pf(size: int, weight: str = "regular") -> ImageFont.FreeTypeFont:
     index = {"regular": 2, "medium": 5, "semibold": 8, "light": 11}[weight]
-    return ImageFont.truetype(PINGFANG, size, index=index)
+    return _load_truetype([(_NOTO_FILES[weight], 0), (PINGFANG, index)], size)
 
 
 def _hv(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(HELVETICA, size, index=1 if bold else 0)
+    index = 1 if bold else 0
+    return _load_truetype([(_DEJAVU_FILES[bold], 0), (HELVETICA, index)], size)
 
 
 def _display_font(text: str, size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """为中文内容选用有完整字形的 PingFang，其余内容使用 Helvetica。"""
+    """为中文内容选用有完整字形的 Noto Sans SC（回退 PingFang），其余内容使用 DejaVu Sans（回退 Helvetica）。"""
     if any(ord(char) > 127 for char in text):
         return _pf(size, "semibold" if bold else "regular")
     return _hv(size, bold)
